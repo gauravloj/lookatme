@@ -23,7 +23,7 @@ class NoDatesSafeLoader(yaml.SafeLoader):
         go on to serialise as json which doesn't have the advanced types
         of yaml, and leads to incompatibilities down the track.
         """
-        if 'yaml_implicit_resolvers' not in cls.__dict__:
+        if "yaml_implicit_resolvers" not in cls.__dict__:
             cls.yaml_implicit_resolvers = cls.yaml_implicit_resolvers.copy()
 
         for first_letter, mappings in cls.yaml_implicit_resolvers.items():
@@ -32,14 +32,17 @@ class NoDatesSafeLoader(yaml.SafeLoader):
             ]
 
 
-NoDatesSafeLoader.remove_implicit_resolver('tag:yaml.org,2002:timestamp')
+NoDatesSafeLoader.remove_implicit_resolver("tag:yaml.org,2002:timestamp")
 
 
 class YamlRender:
     @staticmethod
-    def loads(data): return yaml.load(data, Loader=NoDatesSafeLoader)
+    def loads(data):
+        return yaml.load(data, Loader=NoDatesSafeLoader)
+
     @staticmethod
-    def dumps(data): return yaml.safe_dump(data, allow_unicode=True)
+    def dumps(data):
+        return yaml.safe_dump(data, allow_unicode=True)
 
 
 class BulletsSchema(Schema):
@@ -64,8 +67,7 @@ _NUMBERING_VALIDATION = validate.OneOf(["numeric", "alpha", "roman"])
 
 
 class NumberingSchema(Schema):
-    default = fields.Str(dump_default="numeric",
-                         validate=_NUMBERING_VALIDATION)
+    default = fields.Str(dump_default="numeric", validate=_NUMBERING_VALIDATION)
 
     class Meta:
         include = {
@@ -103,56 +105,81 @@ class HeadingStyleSchema(Schema):
 
 class HruleSchema(Schema):
     char = fields.Str(dump_default="─")
-    style = fields.Nested(StyleFieldSchema, dump_default=StyleFieldSchema().dump({
-        "fg": "#777",
-        "bg": "default",
-    }))
+    style = fields.Nested(
+        StyleFieldSchema,
+        dump_default=StyleFieldSchema().dump(
+            {
+                "fg": "#777",
+                "bg": "default",
+            }
+        ),
+    )
 
 
 class BlockQuoteSchema(Schema):
     side = fields.Str(dump_default="╎")
     top_corner = fields.Str(dump_default="┌")
     bottom_corner = fields.Str(dump_default="└")
-    style = fields.Nested(StyleFieldSchema, dump_default=StyleFieldSchema().dump({
-        "fg": "italics,#aaa",
-        "bg": "default",
-    }))
+    style = fields.Nested(
+        StyleFieldSchema,
+        dump_default=StyleFieldSchema().dump(
+            {
+                "fg": "italics,#aaa",
+                "bg": "default",
+            }
+        ),
+    )
 
 
 class HeadingsSchema(Schema):
-    default = fields.Nested(HeadingStyleSchema, dump_default={
-        "fg": "#346,bold",
-        "bg": "default",
-        "prefix": "░░░░░ ",
-        "suffix": "",
-    })
+    default = fields.Nested(
+        HeadingStyleSchema,
+        dump_default={
+            "fg": "#346,bold",
+            "bg": "default",
+            "prefix": "░░░░░ ",
+            "suffix": "",
+        },
+    )
 
     class Meta:
         include = {
-            "1": fields.Nested(HeadingStyleSchema, dump_default={
-                "fg": "#9fc,bold",
-                "bg": "default",
-                "prefix": "██ ",
-                "suffix": "",
-            }),
-            "2": fields.Nested(HeadingStyleSchema, dump_default={
-                "fg": "#1cc,bold",
-                "bg": "default",
-                "prefix": "▓▓▓ ",
-                "suffix": "",
-            }),
-            "3": fields.Nested(HeadingStyleSchema, dump_default={
-                "fg": "#29c,bold",
-                "bg": "default",
-                "prefix": "▒▒▒▒ ",
-                "suffix": "",
-            }),
-            "4": fields.Nested(HeadingStyleSchema, dump_default={
-                "fg": "#559,bold",
-                "bg": "default",
-                "prefix": "░░░░░ ",
-                "suffix": "",
-            }),
+            "1": fields.Nested(
+                HeadingStyleSchema,
+                dump_default={
+                    "fg": "#9fc,bold",
+                    "bg": "default",
+                    "prefix": "██ ",
+                    "suffix": "",
+                },
+            ),
+            "2": fields.Nested(
+                HeadingStyleSchema,
+                dump_default={
+                    "fg": "#1cc,bold",
+                    "bg": "default",
+                    "prefix": "▓▓▓ ",
+                    "suffix": "",
+                },
+            ),
+            "3": fields.Nested(
+                HeadingStyleSchema,
+                dump_default={
+                    "fg": "#29c,bold",
+                    "bg": "default",
+                    "prefix": "▒▒▒▒ ",
+                    "suffix": "",
+                },
+            ),
+            "4": fields.Nested(
+                HeadingStyleSchema,
+                dump_default={
+                    "fg": "#559,bold",
+                    "bg": "default",
+                    "prefix": "░░░░░ ",
+                    "suffix": "",
+                },
+            ),
             "5": fields.Nested(HeadingStyleSchema),
             "6": fields.Nested(HeadingStyleSchema),
         }
@@ -164,8 +191,8 @@ class TableSchema(Schema):
 
 
 class StyleSchema(Schema):
-    """Styles schema for themes and style overrides within presentations
-    """
+    """Styles schema for themes and style overrides within presentations"""
+
     class Meta:
         render_module = YamlRender
         unknown = RAISE
@@ -175,54 +202,73 @@ class StyleSchema(Schema):
         validate=validate.OneOf(list(pygments.styles.get_all_styles())),
     )
 
-    title = fields.Nested(StyleFieldSchema, dump_default={
-        "fg": "#f30,bold,italics",
-        "bg": "default",
-    })
-    author = fields.Nested(StyleFieldSchema, dump_default={
-        "fg": "#f30",
-        "bg": "default",
-    })
-    date = fields.Nested(StyleFieldSchema, dump_default={
-        "fg": "#777",
-        "bg": "default",
-    })
-    slides = fields.Nested(StyleFieldSchema, dump_default={
-        "fg": "#f30",
-        "bg": "default",
-    })
-    margin = fields.Nested(SpacingSchema, dump_default={
-        "top": 0,
-        "bottom": 0,
-        "left": 2,
-        "right": 2,
-    })
-    padding = fields.Nested(SpacingSchema, dump_default={
-        "top": 0,
-        "bottom": 0,
-        "left": 10,
-        "right": 10,
-    })
+    title = fields.Nested(
+        StyleFieldSchema,
+        dump_default={
+            "fg": "#f30,bold,italics",
+            "bg": "default",
+        },
+    )
+    author = fields.Nested(
+        StyleFieldSchema,
+        dump_default={
+            "fg": "#f30",
+            "bg": "default",
+        },
+    )
+    date = fields.Nested(
+        StyleFieldSchema,
+        dump_default={
+            "fg": "#777",
+            "bg": "default",
+        },
+    )
+    slides = fields.Nested(
+        StyleFieldSchema,
+        dump_default={
+            "fg": "#f30",
+            "bg": "default",
+        },
+    )
+    margin = fields.Nested(
+        SpacingSchema,
+        dump_default={
+            "top": 0,
+            "bottom": 0,
+            "left": 2,
+            "right": 2,
+        },
+    )
+    padding = fields.Nested(
+        SpacingSchema,
+        dump_default={
+            "top": 0,
+            "bottom": 0,
+            "left": 10,
+            "right": 10,
+        },
+    )
 
-    headings = fields.Nested(
-        HeadingsSchema, dump_default=HeadingsSchema().dump(None))
-    bullets = fields.Nested(
-        BulletsSchema, dump_default=BulletsSchema().dump(None))
+    headings = fields.Nested(HeadingsSchema, dump_default=HeadingsSchema().dump(None))
+    bullets = fields.Nested(BulletsSchema, dump_default=BulletsSchema().dump(None))
     numbering = fields.Nested(
-        NumberingSchema, dump_default=NumberingSchema().dump(None))
+        NumberingSchema, dump_default=NumberingSchema().dump(None)
+    )
     table = fields.Nested(TableSchema, dump_default=TableSchema().dump(None))
-    quote = fields.Nested(
-        BlockQuoteSchema, dump_default=BlockQuoteSchema().dump(None))
+    quote = fields.Nested(BlockQuoteSchema, dump_default=BlockQuoteSchema().dump(None))
     hrule = fields.Nested(HruleSchema, dump_default=HruleSchema().dump(None))
-    link = fields.Nested(StyleFieldSchema, dump_default={
-        "fg": "#33c,underline",
-        "bg": "default",
-    })
+    link = fields.Nested(
+        StyleFieldSchema,
+        dump_default={
+            "fg": "#33c,underline",
+            "bg": "default",
+        },
+    )
 
 
 class MetaSchema(Schema):
-    """The schema for presentation metadata
-    """
+    """The schema for presentation metadata"""
+
     class Meta:
         render_module = YamlRender
         unknown = INCLUDE

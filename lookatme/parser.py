@@ -20,16 +20,16 @@ def is_progressive_slide_delimiter_token(token):
     :param dict token: The markdown token
     :returns: True if the token is a progressive slide delimiter
     """
-    return token["type"] == "close_html" and re.match(r'<!--\s*stop\s*-->', token["text"])
+    return token["type"] == "close_html" and re.match(
+        r"<!--\s*stop\s*-->", token["text"]
+    )
 
 
 class Parser(object):
-    """A parser for markdown presentation files
-    """
+    """A parser for markdown presentation files"""
 
     def __init__(self, single_slide=False):
-        """Create a new Parser instance
-        """
+        """Create a new Parser instance"""
         self._single_slide = single_slide
 
     def parse(self, input_data):
@@ -52,18 +52,19 @@ class Parser(object):
         # slides are delimited by ---
         md = mistune.Markdown()
 
-        state = {}
-        tokens = md.block.parse(input_data, state)
+        tokens = md(input_data)
 
         num_hrules, hinfo = self._scan_for_smart_split(tokens)
         keep_split_token = True
 
         if self._single_slide:
+
             def slide_split_check(_):  # type: ignore
                 return False
 
             def heading_mod(_):  # type: ignore
                 pass
+
         elif num_hrules == 0:
             if meta.get("title", "") in ["", None]:
                 meta["title"] = hinfo["title"]
@@ -81,26 +82,30 @@ class Parser(object):
                     token["level"] - (hinfo["title_level"] or 0),
                     1,
                 )
+
             keep_split_token = True
         else:
+
             def slide_split_check(token):  # type: ignore
                 return token["type"] == "hrule"
 
             def heading_mod(_):  # type: ignore
                 pass
+
             keep_split_token = False
 
         slides = self._split_tokens_into_slides(
-            tokens, slide_split_check, heading_mod, keep_split_token)
+            tokens, slide_split_check, heading_mod, keep_split_token
+        )
 
         return "", slides
 
     def _split_tokens_into_slides(
-            self,
-            tokens: List[Dict],
-            slide_split_check: Callable,
-            heading_mod: Callable,
-            keep_split_token: bool
+        self,
+        tokens: List[Dict],
+        slide_split_check: Callable,
+        heading_mod: Callable,
+        keep_split_token: bool,
     ) -> List[Slide]:
         """Split the provided tokens into slides using the slide_split_check
         and heading_mod arguments.
@@ -114,11 +119,14 @@ class Parser(object):
 
             # new slide!
             if should_split:
-                if keep_split_token and len(slides) == 0 and len(curr_slide_tokens) == 0:
+                if (
+                    keep_split_token
+                    and len(slides) == 0
+                    and len(curr_slide_tokens) == 0
+                ):
                     pass
                 else:
-                    slides.extend(self._create_slides(
-                        curr_slide_tokens, len(slides)))
+                    slides.extend(self._create_slides(curr_slide_tokens, len(slides)))
                 curr_slide_tokens = []
                 if keep_split_token:
                     curr_slide_tokens.append(token)
@@ -172,6 +180,7 @@ class Parser(object):
             "counts": defaultdict(int),
             "title": "",
         }
+
         num_hrules = 0
         first_heading = None
         for token in tokens:
@@ -236,13 +245,12 @@ class Parser(object):
             skipped_chars += len(line) + 1
             stripped_line = line.strip()
 
-            is_marker = (re.match(r'----*', stripped_line) is not None)
+            is_marker = re.match(r"----*", stripped_line) is not None
             if is_marker:
-                if not found_first:
-                    found_first = True
-                # found the second one
-                else:
+                if found_first:
+                    # found the second one
                     break
+                found_first = True
 
             if found_first and not is_marker:
                 yaml_data.append(line)
