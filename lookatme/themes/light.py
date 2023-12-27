@@ -22,7 +22,7 @@ theme = {
             "bg": "default",
         },
     },
-    "hrule": {
+    "thematic_break": {
         "style": {
             "fg": "#555",
             "bg": "default",

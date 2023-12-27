@@ -20,8 +20,8 @@ def is_progressive_slide_delimiter_token(token):
     :param dict token: The markdown token
     :returns: True if the token is a progressive slide delimiter
     """
-    return token["type"] == "close_html" and re.match(
-        r"<!--\s*stop\s*-->", token["text"]
+    return token["type"] == "block_html" and re.match(
+        r"<!--\s*stop\s*-->", token["raw"]
     )
 
 
@@ -50,11 +50,18 @@ class Parser(object):
         :returns: tuple of (remaining_data, slide)
         """
         # slides are delimited by ---
-        md = mistune.Markdown()
+        from mistune.plugins.footnotes import footnotes
+        from mistune.plugins.formatting import strikethrough
+        from mistune.plugins.table import table
+        from mistune.plugins.url import url
+        from mistune.plugins.task_lists import task_lists
+
+
+        md = mistune.create_markdown(renderer="ast", plugins=[table, footnotes, strikethrough, url, task_lists])
 
         tokens = md(input_data)
 
-        num_hrules, hinfo = self._scan_for_smart_split(tokens)
+        num_thematic_breaks, hinfo = self._scan_for_smart_split(tokens)
         keep_split_token = True
 
         if self._single_slide:
@@ -65,7 +72,7 @@ class Parser(object):
             def heading_mod(_):  # type: ignore
                 pass
 
-        elif num_hrules == 0:
+        elif num_thematic_breaks == 0:
             if meta.get("title", "") in ["", None]:
                 meta["title"] = hinfo["title"]
 
@@ -73,13 +80,13 @@ class Parser(object):
                 nonlocal hinfo
                 return (
                     token["type"] == "heading"
-                    and token["level"] == hinfo["lowest_non_title"]
+                    and token['attrs']["level"] == hinfo["lowest_non_title"]
                 )
 
             def heading_mod(token):  # type: ignore
                 nonlocal hinfo
-                token["level"] = max(
-                    token["level"] - (hinfo["title_level"] or 0),
+                token['attrs']["level"] = max(
+                    token['attrs']["level"] - (hinfo["title_level"] or 0),
                     1,
                 )
 
@@ -87,7 +94,7 @@ class Parser(object):
         else:
 
             def slide_split_check(token):  # type: ignore
-                return token["type"] == "hrule"
+                return token["type"] == "thematic_break"
 
             def heading_mod(_):  # type: ignore
                 pass
@@ -169,10 +176,10 @@ class Parser(object):
         order=2,
     )
     def _scan_for_smart_split(self, tokens):
-        """Scan the provided tokens for the number of hrules, and the lowest
+        """Scan the provided tokens for the number of thematic_breaks, and the lowest
         (h1 < h2) header level.
 
-        :returns: tuple (num_hrules, lowest_header_level)
+        :returns: tuple (num_thematic_breaks, lowest_header_level)
         """
         hinfo = {
             "title_level": None,
@@ -181,13 +188,13 @@ class Parser(object):
             "title": "",
         }
 
-        num_hrules = 0
+        num_thematic_breaks = 0
         first_heading = None
         for token in tokens:
-            if token["type"] == "hrule":
-                num_hrules += 1
+            if token["type"] == "thematic_break":
+                num_thematic_breaks += 1
             elif token["type"] == "heading":
-                hinfo["counts"][token["level"]] += 1
+                hinfo["counts"][token['attrs']["level"]] += 1
                 if first_heading is None:
                     first_heading = token
 
@@ -195,17 +202,17 @@ class Parser(object):
         if (
             hinfo["counts"]
             and first_heading
-            and hinfo["counts"][first_heading["level"]] == 1
+            and hinfo["counts"][first_heading['attrs']["level"]] == 1
         ):
             hinfo["title"] = first_heading["text"]
-            del hinfo["counts"][first_heading["level"]]
-            hinfo["title_level"] = first_heading["level"]
+            del hinfo["counts"][first_heading['attrs']["level"]]
+            hinfo["title_level"] = first_heading['attrs']["level"]
 
         low_level = min(list(hinfo["counts"].keys()) + [10])
         hinfo["title_level"] = low_level - 1
         hinfo["lowest_non_title"] = low_level
 
-        return num_hrules, hinfo
+        return num_thematic_breaks, hinfo
 
     @tutor(
         "general",

@@ -5,7 +5,7 @@ Smart Slide Splitting
 =====================
 
 lookatme will automatically split input markdown into separate slides if no
-``hrules`` are present in the input markdown.
+``thematic_breaks`` are present in the input markdown.
 
 Slides are split automatically in two ways
 

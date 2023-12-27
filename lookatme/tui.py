@@ -14,7 +14,7 @@ import urwid
 import lookatme.config
 import lookatme.config as config
 import lookatme.contrib
-import lookatme.render.markdown_block as markdown_block
+import lookatme.render.tuirenderer as TuiRenderer
 from lookatme.contrib import contrib_first
 from lookatme.tutorial import tutor
 from lookatme.utils import pile_or_listbox_add, spec_from_style
@@ -47,6 +47,7 @@ class SlideRenderer(threading.Thread):
         self.queue = Queue()
         self.loop = loop
         self.cache = {}
+        self.renderer = TuiRenderer()
         self._log = lookatme.config.get_log().getChild("RENDER")
 
     def flush_cache(self):
@@ -74,14 +75,6 @@ class SlideRenderer(threading.Thread):
         if isinstance(res, Exception):
             raise res
         return res
-
-    def _propagate_meta(self, item1, item2):
-        """Copy the metadata from item1 to item2"""
-        meta = getattr(item1, "meta", {})
-        existing_meta = getattr(item2, "meta", {})
-        new_meta = copy.deepcopy(meta)
-        new_meta.update(existing_meta)
-        setattr(item2, "meta", new_meta)
 
     def stop(self):
         self.keep_running.clear()
@@ -146,57 +139,12 @@ class SlideRenderer(threading.Thread):
         # may add extra metadata to the token itself. For example, list rendering
         # uses this to determine the max indent size for each level.
         tokens = to_render.tokens
-        self._render_tokens(tokens)
-        res = self._render_tokens(tokens)
+        res = self.renderer(tokens)
 
         total = time.time() - start
         self._log.debug(f"Rendered slide {slide_num} in {total}")
 
         return res
-
-    @tutor(
-        "general",
-        "markdown supported features",
-        r"""
-        Lookatme supports most markdown features.
-
-        |                         Supported | Not (yet) Supported |
-        |----------------------------------:|---------------------|
-        |                            Tables | Footnotes           |
-        |                          Headings | *Images             |
-        |                        Paragraphs | Inline HTML         |
-        |                      Block quotes |                     |
-        |                     Ordered lists |                     |
-        |                   Unordered lists |                     |
-        | Code blocks & syntax highlighting |                     |
-        |                 Inline code spans |                     |
-        |                   Double emphasis |                     |
-        |                   Single Emphasis |                     |
-        |                     Strikethrough |                     |
-        |                             Links |                     |
-
-        \*Images may be supported through extensions
-        """,
-        order=4,
-    )
-    def _render_tokens(self, tokens):
-        tmp_listbox = urwid.ListBox([])
-        stack = [tmp_listbox]
-        for token in tokens:
-            self._log.debug(f"{'  '*len(stack)}Rendering token {token}")
-
-            last_stack = stack[-1]
-            last_stack_len = len(stack)
-
-            render_token = getattr(markdown_block, f"render_{token['type']}")
-            res = render_token(token, stack[-1], stack, self.loop)
-            if len(stack) > last_stack_len:
-                self._propagate_meta(last_stack, stack[-1])
-            if res is None:
-                continue
-            pile_or_listbox_add(last_stack, res)
-
-        return tmp_listbox.body
 
 
 class MarkdownTui(urwid.Frame):

@@ -213,13 +213,13 @@ def test_numbered_lists(tmpdir, mocker):
     assert_render(stripped_rows, rendered)
 
 
-def test_hrule(tmpdir, mocker):
-    """Test that hrules render correctly"""
+def test_thematic_break(tmpdir, mocker):
+    """Test that thematic_breaks render correctly"""
     setup_lookatme(
         tmpdir,
         mocker,
         style={
-            "hrule": {
+            "thematic_break": {
                 "style": {
                     "fg": "",
                     "bg": "",

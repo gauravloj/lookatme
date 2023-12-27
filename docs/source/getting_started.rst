@@ -67,7 +67,7 @@ any hard-errors during import, such as ``ImportError``.
 ``--single`` / ``--one``
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-Render the markdown source as a single slide, ignoring all hrules. Scroll
+Render the markdown source as a single slide, ignoring all thematic_breaks. Scroll
 overflowing slides with the up/down arrow keys and page up/page down.
 
 ``--debug`` and ``--log``

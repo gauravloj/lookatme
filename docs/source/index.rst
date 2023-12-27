@@ -39,7 +39,7 @@ Run lookatme on slides written in Markdown:
 
     lookatme slides.md
 
-Slides are separated with ``---`` hrules:
+Slides are separated with ``---`` thematic_breaks:
 
 .. code-block:: md
 

@@ -128,7 +128,7 @@ Plugins that relied on `render_text` will need to be updated.
 ## v1.3.0
 
 Vertical scrolling on overflowed slides now works, added `--single` and `--one`
-command-line options and hrule rendering.
+command-line options and thematic_break rendering.
 
 |    type | ticket                                                  | description                                             |
 |--------:|---------------------------------------------------------|---------------------------------------------------------|

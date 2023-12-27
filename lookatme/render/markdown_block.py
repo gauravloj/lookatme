@@ -62,15 +62,15 @@ def render_newline(token, body, stack, loop):
 
 
 @contrib_first
-def render_hrule(token, body, stack, loop):
+def render_thematic_break(token, body, stack, loop):
     """Render a newline
 
     See :any:`lookatme.tui.SlideRenderer.do_render` for argument and return
     value descriptions.
     """
-    hrule_conf = config.get_style()["hrule"]
-    div = urwid.Divider(hrule_conf["char"], top=1, bottom=1)
-    return urwid.Pile([urwid.AttrMap(div, utils.spec_from_style(hrule_conf["style"]))])
+    thematic_break_conf = config.get_style()["thematic_break"]
+    div = urwid.Divider(thematic_break_conf["char"], top=1, bottom=1)
+    return urwid.Pile([urwid.AttrMap(div, utils.spec_from_style(thematic_break_conf["style"]))])
 
 
 @tutor(
@@ -141,7 +141,7 @@ def render_heading(token, body, stack, loop):
     prefix = utils.styled_text(style["prefix"], style)
     suffix = utils.styled_text(style["suffix"], style)
 
-    rendered = render_text(text=token["text"])
+    rendered = "" # render_text(text=token["text"])
     if len(rendered) > 0:
         rendered = rendered[0]
 

@@ -103,7 +103,7 @@ class HeadingStyleSchema(Schema):
     bg = fields.Str(dump_default="")
 
 
-class HruleSchema(Schema):
+class ThematicBreakSchema(Schema):
     char = fields.Str(dump_default="─")
     style = fields.Nested(
         StyleFieldSchema,
@@ -256,7 +256,7 @@ class StyleSchema(Schema):
     )
     table = fields.Nested(TableSchema, dump_default=TableSchema().dump(None))
     quote = fields.Nested(BlockQuoteSchema, dump_default=BlockQuoteSchema().dump(None))
-    hrule = fields.Nested(HruleSchema, dump_default=HruleSchema().dump(None))
+    thematic_break = fields.Nested(ThematicBreakSchema, dump_default=ThematicBreakSchema().dump(None))
     link = fields.Nested(
         StyleFieldSchema,
         dump_default={

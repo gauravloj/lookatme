@@ -79,7 +79,7 @@ More text
     assert len(slides) == 2
 
 
-def test_parse_slides_with_progressive_stops_and_hrule_splits():
+def test_parse_slides_with_progressive_stops_and_thematic_break_splits():
     """Test that slide parsing works correctly"""
     input_data = r"""
 # Heading

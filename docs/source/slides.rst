@@ -5,7 +5,7 @@ Slides
 
 Slides in ``lookatme`` are:
 
-  * Separated by hrule elements: ``---`` in Markdown
+  * Separated by thematic_break elements: ``---`` in Markdown
   * Resized to fit the current window
 
 Metadata
