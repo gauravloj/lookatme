@@ -14,7 +14,7 @@ import urwid
 import lookatme.config
 import lookatme.config as config
 import lookatme.contrib
-import lookatme.render.tuirenderer as TuiRenderer
+from lookatme.render.tuirenderer import TuiRenderer
 from lookatme.contrib import contrib_first
 from lookatme.tutorial import tutor
 from lookatme.utils import pile_or_listbox_add, spec_from_style
@@ -47,7 +47,7 @@ class SlideRenderer(threading.Thread):
         self.queue = Queue()
         self.loop = loop
         self.cache = {}
-        self.renderer = TuiRenderer()
+        self.renderer = TuiRenderer(loop)
         self._log = lookatme.config.get_log().getChild("RENDER")
 
     def flush_cache(self):

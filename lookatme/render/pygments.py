@@ -65,9 +65,11 @@ def render_text(text, lang="text", style_name=None, plain=False):
 
     markup = []
     for x in formatter.formatgenerator(code_tokens):
+        new_fix = x
         if style_bg:
-            x[0].background = style_bg
-        markup.append(x)
+            if isinstance(x[0], urwid.AttrSpec):
+                new_fix = (urwid.AttrSpec(x[0].foreground, style_bg, x[0].colors), x[1])
+        markup.append(new_fix)
 
     if markup[-1][1] == "\n":
         markup = markup[:-1]
