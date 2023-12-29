@@ -56,8 +56,9 @@ class Parser(object):
         from mistune.plugins.url import url
         from mistune.plugins.task_lists import task_lists
 
-
-        md = mistune.create_markdown(renderer="ast", plugins=[table, footnotes, strikethrough, url, task_lists])
+        md = mistune.create_markdown(
+            renderer="ast", plugins=[table, footnotes, strikethrough, url, task_lists]
+        )
 
         tokens = md(input_data)
 
@@ -80,13 +81,13 @@ class Parser(object):
                 nonlocal hinfo
                 return (
                     token["type"] == "heading"
-                    and token['attrs']["level"] == hinfo["lowest_non_title"]
+                    and token["attrs"]["level"] == hinfo["lowest_non_title"]
                 )
 
             def heading_mod(token):  # type: ignore
                 nonlocal hinfo
-                token['attrs']["level"] = max(
-                    token['attrs']["level"] - (hinfo["title_level"] or 0),
+                token["attrs"]["level"] = max(
+                    token["attrs"]["level"] - (hinfo["title_level"] or 0),
                     1,
                 )
 
@@ -194,7 +195,7 @@ class Parser(object):
             if token["type"] == "thematic_break":
                 num_thematic_breaks += 1
             elif token["type"] == "heading":
-                hinfo["counts"][token['attrs']["level"]] += 1
+                hinfo["counts"][token["attrs"]["level"]] += 1
                 if first_heading is None:
                     first_heading = token
 
@@ -202,11 +203,11 @@ class Parser(object):
         if (
             hinfo["counts"]
             and first_heading
-            and hinfo["counts"][first_heading['attrs']["level"]] == 1
+            and hinfo["counts"][first_heading["attrs"]["level"]] == 1
         ):
             hinfo["title"] = first_heading["text"]
-            del hinfo["counts"][first_heading['attrs']["level"]]
-            hinfo["title_level"] = first_heading['attrs']["level"]
+            del hinfo["counts"][first_heading["attrs"]["level"]]
+            hinfo["title_level"] = first_heading["attrs"]["level"]
 
         low_level = min(list(hinfo["counts"].keys()) + [10])
         hinfo["title_level"] = low_level - 1

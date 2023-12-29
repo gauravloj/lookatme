@@ -13,14 +13,21 @@ from lookatme.contrib import contrib_first
 from lookatme.tutorial import tutor
 from lookatme.widgets.clickable_text import ClickableText, LinkIndicatorSpec
 
+
 def _get_widget_text(textwidget):
+    text = textwidget
     if isinstance(textwidget, ClickableText):
-        return textwidget.attrib, textwidget.text
-    return textwidget
+        if len(textwidget.attrib) > 0:
+            # FIXME, handle returning list of attributes istead of first item
+            return textwidget.attrib[0], textwidget.text
+        text = textwidget.text
+    return text
+
 
 class TuiRenderer(object):
     """A renderer to re-format Markdown text."""
-    NAME = 'tuirenderer'
+
+    NAME = "tuirenderer"
 
     def __init__(self, loop):
         self.__methods = {}
@@ -28,14 +35,13 @@ class TuiRenderer(object):
         self._log = config.get_log().getChild("RENDER")
         self.localized_state = dict()
 
-
     def register(self, name: str, method):
         """Register a render method for the named token. For example::
 
-            def render_wiki(renderer, key, title):
-                return f'<a href="/wiki/{key}">{title}</a>'
+        def render_wiki(renderer, key, title):
+            return f'<a href="/wiki/{key}">{title}</a>'
 
-            renderer.register('wiki', render_wiki)
+        renderer.register('wiki', render_wiki)
         """
         # bind self into renderer method
         self.__methods[name] = lambda *arg, **kwargs: method(self, *arg, **kwargs)
@@ -49,21 +55,9 @@ class TuiRenderer(object):
                 raise AttributeError('No renderer "{!r}"'.format(name))
             return method
 
-    def _propagate_meta(self, item1, item2):
-        """Copy the metadata from item1 to item2"""
-        meta = getattr(item1, "meta", {})
-        existing_meta = getattr(item2, "meta", {})
-        new_meta = copy.deepcopy(meta)
-        new_meta.update(existing_meta)
-        setattr(item2, "meta", new_meta)
-
-    def render_token(self, token, stack):
-        func = self._get_method(token['type'])
-        return func(token, stack)
-
-    def iter_tokens(self, tokens, state):
-        for tok in tokens:
-            yield self.render_token(tok, state)
+    def render_token(self, token):
+        func = self._get_method(token["type"])
+        return func(token)
 
     @tutor(
         "general",
@@ -92,19 +86,11 @@ class TuiRenderer(object):
     )
     def render_tokens(self, tokens):
         tmp_listbox = urwid.ListBox([])
-        stack = [tmp_listbox]
         for token in tokens:
-            self._log.debug(f"{'  '*len(stack)}Rendering token {token}")
-
-            last_stack = stack[-1]
-            last_stack_len = len(stack)
-
-            res = self.render_token(token, stack)
-            if len(stack) > last_stack_len:
-                self._propagate_meta(last_stack, stack[-1])
+            res = self.render_token(token)
             if res is None:
-                continue
-            pile_or_listbox_add(last_stack, res)
+                raise Exception("Why so Serioussss!!!")
+            pile_or_listbox_add(tmp_listbox, res)
 
         return tmp_listbox.body
 
@@ -124,10 +110,10 @@ class TuiRenderer(object):
     #             text += ' "' + title + '"'
     #         yield text
 
-    def render_children(self, token, stack):
-        children = token['children']
+    def render_children(self, token):
+        children = token["children"]
         return self.render_tokens(children)
-    
+
     @tutor(
         "markdown",
         "tables",
@@ -155,7 +141,7 @@ class TuiRenderer(object):
         """,
     )
     @contrib_first
-    def table(self, token, stack):
+    def table(self, token):
         """Renders a table using the :any:`Table` widget.
 
         See :any:`lookatme.tui.SlideRenderer.do_render` for argument and return
@@ -174,71 +160,71 @@ class TuiRenderer(object):
         return [ClickableText("rendered table")]
 
     def render_table_bak(self, text):
-        return '<table>\n' + text + '</table>\n'
-
+        return "<table>\n" + text + "</table>\n"
 
     def render_table_head(renderer, text):
-        return '<thead>\n<tr>\n' + text + '</tr>\n</thead>\n'
-
+        return "<thead>\n<tr>\n" + text + "</tr>\n</thead>\n"
 
     def render_table_body(renderer, text):
-        return '<tbody>\n' + text + '</tbody>\n'
-
+        return "<tbody>\n" + text + "</tbody>\n"
 
     def render_table_row(renderer, text):
-        return '<tr>\n' + text + '</tr>\n'
-
+        return "<tr>\n" + text + "</tr>\n"
 
     def render_table_cell(renderer, text, align=None, head=False):
         if head:
-            tag = 'th'
+            tag = "th"
         else:
-            tag = 'td'
+            tag = "td"
 
-        html = '  <' + tag
+        html = "  <" + tag
         if align:
             html += ' style="text-align:' + align + '"'
 
-        return html + '>' + text + '</' + tag + '>\n'
+        return html + ">" + text + "</" + tag + ">\n"
 
+    def text(self, token) -> str:
+        text = token["raw"]
 
-    def text(self, token, stack) -> str:
-        text = token['raw']
-
-        headingstyle = self.localized_state.get("headings", {}).get("style", None)
-        if headingstyle is not None:
-            text = utils.styled_text(text, headingstyle)
+        # headingstyle = self.localized_state.get("headings", {}).get("style", None)
+        # if headingstyle is not None:
+        #     text = utils.styled_text(text, headingstyle)
 
         return [ClickableText(text)]
 
-    def _add_effect(self, token, stack, addeffect):
-        oldstyle = self.localized_state.get("oldstyle", {
-            'fg': '',
-            'bg': '',
-        })
-        oldfg = oldstyle['fg']
-        oldbg = oldstyle['bg']
+    def _add_effect(self, token, addeffect):
+        oldstyle = self.localized_state.get(
+            "oldstyle",
+            {
+                "fg": "",
+                "bg": "",
+            },
+        )
+        oldfg = oldstyle["fg"]
+        oldbg = oldstyle["bg"]
         if len(oldfg) > 0:
-            oldfg += f',{addeffect}'
+            oldfg += f",{addeffect}"
         else:
-            oldfg = f'default,{addeffect}'
+            oldfg = f"default,{addeffect}"
         if len(oldbg) == 0:
-            oldbg = f'default'
+            oldbg = f"default"
 
         self.localized_state["oldstyle"] = {
-            'fg': oldfg,
-            'bg': oldbg,
+            "fg": oldfg,
+            "bg": oldbg,
         }
-        text = self.render_children(token, stack)
+        text = self.render_children(token)
+        text_specs = list(map(_get_widget_text, text))
+        res_text = ClickableText(text_specs)
+
         self.localized_state["oldstyle"] = oldstyle
-        attrspec, _ = utils.styled_text(text, addeffect, oldstyle)
-        return [ClickableText((attrspec, text[0].text))]
-    
-    def emphasis(self, token, stack) -> str:
-        return self._add_effect(token, stack, 'italics')
-    
-    def strong(self, token, stack) -> str:
-        return self._add_effect(token, stack, "underline")
+        return utils.styled_text(res_text, addeffect, oldstyle)
+
+    def emphasis(self, token) -> str:
+        return self._add_effect(token, "italics")
+
+    def strong(self, token) -> str:
+        return self._add_effect(token, "underline")
 
     @tutor(
         "markdown",
@@ -247,17 +233,34 @@ class TuiRenderer(object):
         <TUTOR:EXAMPLE>
         I lost my ~~mind~~ keyboard and couldn't type anymore.
         </TUTOR:EXAMPLE>
-        """
+        """,
     )
     @contrib_first
-    def strikethrough(self, token, stack):
+    def strikethrough(self, token):
         """Renders strikethrough text (``~~text~~``)
 
         :returns: list of `urwid Text markup <http://urwid.org/manual/displayattributes.html#text-markup>`_
             tuples.
         """
-        return self._add_effect(token, stack, "strikethrough")
-    
+        return self._add_effect(token, "strikethrough")
+
+    @tutor(
+        "markdown",
+        "images",
+        r"""
+        Vanilla lookatme renders images as links. Some extensions provide ways to
+        render images in the terminal.
+
+        Consider exploring:
+
+        * [lookatme.contrib.image_ueberzug](https://github.com/d0c-s4vage/lookatme.contrib.image_ueberzug)
+        * This works on Linux only, with X11, and must be separately installed
+
+        <TUTOR:EXAMPLE>
+        ![image alt](https://image/url)
+        </TUTOR:EXAMPLE>
+        """,
+    )
     @tutor(
         "markdown",
         "links",
@@ -273,11 +276,11 @@ class TuiRenderer(object):
         Links can be styled with slide metadata. This is the default style:
 
         <TUTOR:STYLE>link</TUTOR:STYLE>
-        """
+        """,
     )
     @contrib_first
     # def link(link_uri, title, link_text):
-    def link(self, token, stack):
+    def link(self, token):
         """Renders a link. This function does a few special things to make the
         clickable links happen. All text in lookatme is rendered using the
         :any:`ClickableText` class. The ``ClickableText`` class looks for
@@ -290,51 +293,51 @@ class TuiRenderer(object):
             tuples.
         """
         raw_link_text = []
-        for x in token['children']:
-            raw_link_text.append(x['raw'])
+        for x in token["children"]:
+            raw_link_text.append(x["raw"])
         raw_link_text = "".join(raw_link_text)
 
-        label = token.get('label')
+        label = token.get("label")
         spec, text = utils.styled_text(
-            [raw_link_text], utils.spec_from_style(config.get_style()["link"]))
+            [raw_link_text], utils.spec_from_style(config.get_style()["link"])
+        )
         toreturn = [ClickableText((spec, text))]
         if label:
             spec, text = utils.styled_text(
-                [label], utils.spec_from_style(config.get_style()["link"]))
+                [label], utils.spec_from_style(config.get_style()["link"])
+            )
             return toreturn + [ClickableText([(spec, text)])]
 
-        attrs = token['attrs']
-        link_uri = attrs['url']
+        attrs = token["attrs"]
+        link_uri = attrs["url"]
         # title = attrs.get('title')
-        
+
         spec = LinkIndicatorSpec(raw_link_text, link_uri, spec)
         return [ClickableText((spec, text))]
 
+    def image(self, token) -> str:
+        return self.link(token)
 
-    def render_image(self, token) -> str:
-        return '!' + self.link(token)
+    def codespan(self, token) -> str:
+        text = pygments_render.render_text(" " + token["raw"] + " ", plain=True)
+        return [text]
 
-    def codespan(self, token, stack) -> str:
-        text = pygments_render.render_text(" " + token['raw'] + " ", plain=True)
-        return [ClickableText(text)]
-
-    def linebreak(self, token, stack) -> str:
+    def linebreak(self, token) -> str:
         return [urwid.Divider()]
 
-    def softbreak(self, token, stack) -> str:
+    def softbreak(self, token) -> str:
         return [urwid.Divider()]
 
-    def blank_line(self, token, stack) -> str:
+    def blank_line(self, token) -> str:
         return [urwid.Divider(), urwid.Divider()]
 
-    def render_inline_html(self, token, stack) -> str:
-        return [token['raw']]
+    def render_inline_html(self, token) -> str:
+        return [token["raw"]]
 
-    def paragraph(self, token, stack) -> str:
-        text = self.render_children(token, stack)
-        return [urwid.Divider()] + text + [urwid.Divider()]
-
-
+    def paragraph(self, token) -> str:
+        text = self.render_children(token)
+        styled_text = list(map(_get_widget_text, text))
+        return [urwid.Divider()] + [ClickableText(styled_text)] + [urwid.Divider()]
 
     @tutor(
         "markdown",
@@ -357,7 +360,7 @@ class TuiRenderer(object):
         """,
     )
     @contrib_first
-    def heading(self, token, stack) -> str:
+    def heading(self, token) -> str:
         """Render markdown headings, using the defined styles for the styling and
         prefix/suffix.
 
@@ -398,63 +401,66 @@ class TuiRenderer(object):
         :returns: A list of urwid Widgets or a single urwid Widget
         """
         headings = config.get_style()["headings"]
-        level = token['attrs']['level']
+        level = token["attrs"]["level"]
         style = config.get_style()["headings"].get(str(level), headings["default"])
 
         prefix = utils.styled_text(style["prefix"], style)
         suffix = utils.styled_text(style["suffix"], style)
 
         self.localized_state["headings"] = {
-            'style': style,
+            "style": style,
         }
+        self.localized_state["is_inline"] = True
 
-        rendered = self.render_children(token, stack)
-        
+        rendered = self.render_children(token)
+
         self.localized_state["headings"] = dict()
 
-        raw_text = list(map(_get_widget_text, rendered))
+        styled_text = list(map(lambda txt: utils.styled_text(txt, style), rendered))
 
         return [
             urwid.Divider(),
             ClickableText(
                 # [prefix] + utils.styled_text(rendered, style) + [suffix]),  # type: ignore
-                [prefix] + raw_text + [suffix]),  # type: ignore
+                [prefix]
+                + styled_text
+                + [suffix]
+            ),  # type: ignore
             urwid.Divider(),
         ]
-    
+
     @contrib_first
-    def thematic_break(self, token, stack):
+    def thematic_break(self, token):
         """Render a newline
 
         See :any:`lookatme.tui.SlideRenderer.do_render` for argument and return
         value descriptions.
         """
         hrule_conf = config.get_style()["hrule"]
-        div = urwid.Divider(hrule_conf['char'], top=1, bottom=1)
-        return [urwid.Pile([urwid.AttrMap(div, utils.spec_from_style(hrule_conf['style']))])]
+        div = urwid.Divider(hrule_conf["char"], top=1, bottom=1)
+        return [
+            urwid.Pile([urwid.AttrMap(div, utils.spec_from_style(hrule_conf["style"]))])
+        ]
 
-    def render_block_text(self, token, stack) -> str:
-        return self.render_children(token, stack) + '\n'
+    def block_text(self, token):
+        text = self.render_children(token)
+        return text + [urwid.Divider()]
 
-    def block_code(self, token, stack) -> str:
+    def block_code(self, token) -> str:
         """Renders a code block using the Pygments library.
 
         See :any:`lookatme.tui.SlideRenderer.do_render` for additional argument and
         return value descriptions.
         """
-        attrs = token.get('attrs', {})
-        lang = attrs.get('info', 'text')
-        code = token['raw']
+        attrs = token.get("attrs", {})
+        lang = attrs.get("info", "text")
+        code = token["raw"]
         res = pygments_render.render_text(code, lang=lang)
 
-        return [
-            urwid.Divider(),
-            res,
-            urwid.Divider()
-        ]
+        return [urwid.Divider(), res, urwid.Divider()]
 
-    def block_quote(self, token, stack) -> str:
-        # text = indent(self.render_children(token, stack), '> ')
+    def block_quote(self, token) -> str:
+        # text = indent(self.render_children(token), '> ')
         # return text + '\n\n'
         """Begins rendering of a block quote. Pushes a new ``urwid.Pile()`` to the
         stack that is indented, has styling applied, and has the quote markers
@@ -484,9 +490,13 @@ class TuiRenderer(object):
         quote_bottom_corner = styles["bottom_corner"]
         quote_style = styles["style"]
 
-        res = self.render_children(token, stack)
+        res = self.render_children(token)
 
         pile_or_listbox_add(pile, res)
+        if isinstance(pile.contents[0][0], urwid.Divider):
+            pile.contents = pile.contents[1:]
+        if isinstance(pile.contents[-1][0], urwid.Divider):
+            pile.contents = pile.contents[:-1]
 
         toreturn = [
             urwid.Divider(),
@@ -495,23 +505,23 @@ class TuiRenderer(object):
                     urwid.Padding(pile, left=2),
                     utils.spec_from_style(quote_style),
                 ),
-                lline=quote_side, rline="",
-                tline=" ", trcorner="", tlcorner=quote_top_corner,
-                bline=" ", brcorner="", blcorner=quote_bottom_corner,
+                lline=quote_side,
+                rline="",
+                tline=" ",
+                trcorner="",
+                tlcorner=quote_top_corner,
+                bline=" ",
+                brcorner="",
+                blcorner=quote_bottom_corner,
             ),
             urwid.Divider(),
         ]
 
-        return toreturn        
+        return toreturn
 
-    def render_block_html(self, token, stack) -> str:
-        return token['raw'] + '\n\n'
+    def render_block_html(self, token) -> str:
+        return token["raw"] + "\n\n"
 
-    def render_block_error(self, token, stack) -> str:
-        return ''
-        
+    def render_block_error(self, token) -> str:
+        return ""
 
-
-    # def list(self, token) -> str:
-    #     return render_list(self, token)
-    
