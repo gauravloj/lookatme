@@ -410,7 +410,6 @@ class TuiRenderer(object):
         self.localized_state["headings"] = {
             "style": style,
         }
-        self.localized_state["is_inline"] = True
 
         rendered = self.render_children(token)
 
@@ -525,3 +524,139 @@ class TuiRenderer(object):
     def render_block_error(self, token) -> str:
         return ""
 
+    @tutor(
+        "markdown",
+        "ordered lists",
+        r"""
+        Ordered lists are lines of text prefixed by a `N. ` or `N)`, where `N` is
+        any number.
+
+        <TUTOR:EXAMPLE>
+        1. item level 1.1
+        1. item level 1.2
+            1. item level 2.1
+                5. item level 3.1
+                6. item level 3.2
+            1. item level 2.2
+        1. item level 1.3
+        </TUTOR:EXAMPLE>
+
+        ## Style
+
+        Ordered lists can be styled with slide metadata. This is the default style:
+
+        <TUTOR:STYLE>numbering</TUTOR:STYLE>
+        """,
+    )
+    @tutor(
+        "markdown",
+        "unordered lists",
+        r"""
+        Unordered lists are lines of text starting with either `*`, `+`, or `-`.
+
+        <TUTOR:EXAMPLE>
+        * item level 1.1
+        * item level 1.2
+            * item level 2.1
+                * item level 3.1
+                * item level 3.2
+            * item level 2.2
+        * item level 1.3
+        </TUTOR:EXAMPLE>
+
+        ## Style
+
+        Unordered lists can be styled with slide metadata. This is the default style:
+
+        <TUTOR:STYLE>bullets</TUTOR:STYLE>
+        """,
+    )
+    @tutor(
+        "markdown",
+        "lists",
+        r"""
+        Lists can either be ordered or unordered. You can nest lists by indenting
+        child lists by four spaces.
+
+        Other markdown elements can also be nested in lists.
+
+        <TUTOR:EXAMPLE>
+        1. item level 1.1
+        > quote
+        1. item level 1.2
+            * item level 2.1 
+                1. item level 3.1
+                a paragraph
+
+                More text here blah blah blah
+                1. A new item level 3.2
+            * item level 2.2
+            ```python
+            print("hello")
+            ```
+        1. item level 1.3
+        </TUTOR:EXAMPLE>
+        """,
+    )
+    def list(self, token) -> str:
+        self.localized_state["list_level"] = (
+            self.localized_state.get("list_level", 0) + 1
+        )
+
+        attrs = token["attrs"]
+        list_level = self.localized_state["list_level"]
+        outerlist_pile = urwid.Pile([])
+        get_marker_text = lambda x: x
+        start = attrs.get("start", 1)
+        if attrs["ordered"]:
+            numbering = config.get_style()["numbering"]
+            list_marker_type = numbering.get(str(list_level), numbering["default"])
+            sequence = {
+                "numeric": lambda x: str(x),
+                "alpha": lambda x: chr(ord("a") + x - 1),
+                "roman": lambda x: utils.int_to_roman(x),
+            }[list_marker_type]
+
+            start = attrs.get("start", 1)
+
+            get_marker_text = lambda x: sequence(x) + token["bullet"] + " "
+
+        else:
+            bullets = config.get_style()["bullets"]
+            get_marker_text = (
+                lambda x: bullets.get(str(list_level), bullets["default"]) + " "
+            )
+
+        max_marker_width = 2
+        for item in token["children"]:
+            marker_text = get_marker_text(start)
+            start += 1
+
+            if len(marker_text) > max_marker_width:
+                max_marker_width = len(marker_text)
+            marker_col_width = max_marker_width
+
+            list_item_pile = urwid.Pile(urwid.SimpleFocusListWalker([]))
+            for tok in item["children"]:
+                res = self.render_token(tok)
+                pile_or_listbox_add(list_item_pile, res)
+            res = urwid.Columns(
+                [
+                    (marker_col_width, urwid.Text(("bold", marker_text))),
+                    list_item_pile,
+                ]
+            )
+            pile_or_listbox_add(outerlist_pile, res)
+
+        self.localized_state["list_level"] = (
+            self.localized_state.get("list_level", 1) - 1
+        )
+
+        if self.localized_state["list_level"] == 0:
+            return (
+                [urwid.Divider()]
+                + [urwid.Padding(outerlist_pile, left=2)]
+                + [urwid.Divider()]
+            )
+
+        return outerlist_pile
