@@ -31,6 +31,7 @@ def expanded_styles(fn):
             return fn(text, styles)
         else:
             return fn(text, styles)
+
     return inner
 
 
@@ -45,8 +46,7 @@ def placeholder():
 
 
 def render_no_change(text):
-    """Render inline markdown text with no changes
-    """
+    """Render inline markdown text with no changes"""
     return [text]
 
 
@@ -115,7 +115,7 @@ def footnote_ref(key, index):
     <TUTOR:EXAMPLE>
     ![image alt](https://image/url)
     </TUTOR:EXAMPLE>
-    """
+    """,
 )
 @contrib_first
 def image(link_uri, title, text):
@@ -143,7 +143,7 @@ def image(link_uri, title, text):
     Links can be styled with slide metadata. This is the default style:
 
     <TUTOR:STYLE>link</TUTOR:STYLE>
-    """
+    """,
 )
 @contrib_first
 def link(link_uri, title, link_text):
@@ -167,7 +167,8 @@ def link(link_uri, title, link_text):
     raw_link_text = "".join(raw_link_text)
 
     spec, text = utils.styled_text(
-        link_text, utils.spec_from_style(config.get_style()["link"]))
+        link_text, utils.spec_from_style(config.get_style()["link"])
+    )
     spec = LinkIndicatorSpec(raw_link_text, link_uri, spec)
     return [(spec, text)]
 
@@ -179,7 +180,7 @@ def link(link_uri, title, link_text):
     <TUTOR:EXAMPLE>
     The donut jumped *under* the crane.
     </TUTOR:EXAMPLE>
-    """
+    """,
 )
 @expanded_styles
 @contrib_first
@@ -199,7 +200,7 @@ def emphasis(text, old_styles):
     <TUTOR:EXAMPLE>
     They jumped **over** the wagon
     </TUTOR:EXAMPLE>
-    """
+    """,
 )
 @expanded_styles
 @contrib_first
@@ -220,7 +221,7 @@ def double_emphasis(text, old_styles):
     The `OddOne` class accepts `Table` instances, converts them to raw pointers,
     forces garbage collection to run.
     </TUTOR:EXAMPLE>
-    """
+    """,
 )
 @expanded_styles
 @contrib_first
@@ -256,7 +257,7 @@ def linebreak():
     <TUTOR:EXAMPLE>
     I lost my ~~mind~~ keyboard and couldn't type anymore.
     </TUTOR:EXAMPLE>
-    """
+    """,
 )
 @expanded_styles
 @contrib_first

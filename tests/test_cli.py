@@ -17,15 +17,13 @@ from lookatme.__main__ import main
 
 
 def run_cmd(*args):
-    """Run the provided arguments
-    """
+    """Run the provided arguments"""
     runner = CliRunner()
     return runner.invoke(main, args)
 
 
 def test_dump_styles_unicode():
-    """Test that dump styles works correctly
-    """
+    """Test that dump styles works correctly"""
     res = run_cmd("--dump-styles")
     assert res.exit_code == 0
     assert "█" in res.output
@@ -35,7 +33,7 @@ def _get_dumped_style(
     tmpdir,
     theme: Optional[str] = None,
     md_meta_style: Optional[str] = None,
-    cli_style: Optional[str] = None
+    cli_style: Optional[str] = None,
 ) -> str:
     cli_args = ["--dump-styles"]
 
@@ -44,12 +42,16 @@ def _get_dumped_style(
     if md_meta_style is not None:
         tmpfile = tmpdir.join("test.md")
         with open(tmpfile, "w") as f:
-            f.write("\n".join([
-                "---",
-                "styles:",
-                "  style: {}".format(md_meta_style),
-                "---",
-            ]))
+            f.write(
+                "\n".join(
+                    [
+                        "---",
+                        "styles:",
+                        "  style: {}".format(md_meta_style),
+                        "---",
+                    ]
+                )
+            )
         cli_args += [str(tmpfile)]
     if cli_style is not None:
         cli_args += ["--style", cli_style]
@@ -62,20 +64,12 @@ def _get_dumped_style(
 
 
 def test_style_override_precedence_dark(tmpdir):
-    """Test that dump styles works correctly
-    """
+    """Test that dump styles works correctly"""
     default_style = _get_dumped_style(tmpdir)
     themed_style = _get_dumped_style(tmpdir, theme="dark")
-    themed_and_md = _get_dumped_style(
-        tmpdir,
-        theme="dark",
-        md_meta_style="emacs"
-    )
+    themed_and_md = _get_dumped_style(tmpdir, theme="dark", md_meta_style="emacs")
     themed_and_md_and_cli = _get_dumped_style(
-        tmpdir,
-        theme="dark",
-        md_meta_style="emacs",
-        cli_style="zenburn"
+        tmpdir, theme="dark", md_meta_style="emacs", cli_style="zenburn"
     )
 
     default = lookatme.schemas.MetaSchema().dump(None)
@@ -89,20 +83,12 @@ def test_style_override_precedence_dark(tmpdir):
 
 
 def test_style_override_precedence_light(tmpdir):
-    """Test that dump styles works correctly
-    """
+    """Test that dump styles works correctly"""
     default_style = _get_dumped_style(tmpdir)
     themed_style = _get_dumped_style(tmpdir, theme="light")
-    themed_and_md = _get_dumped_style(
-        tmpdir,
-        theme="light",
-        md_meta_style="emacs"
-    )
+    themed_and_md = _get_dumped_style(tmpdir, theme="light", md_meta_style="emacs")
     themed_and_md_and_cli = _get_dumped_style(
-        tmpdir,
-        theme="light",
-        md_meta_style="emacs",
-        cli_style="zenburn"
+        tmpdir, theme="light", md_meta_style="emacs", cli_style="zenburn"
     )
 
     default = lookatme.schemas.MetaSchema().dump(None)
@@ -116,16 +102,14 @@ def test_style_override_precedence_light(tmpdir):
 
 
 def test_version():
-    """Test the version option
-    """
+    """Test the version option"""
     res = run_cmd("--version")
     assert res.exit_code == 0
     assert lookatme.__version__ in res.output
 
 
 def test_exceptions(tmpdir, mocker):
-    """Test exception handling on invalid inputs
-    """
+    """Test exception handling on invalid inputs"""
     log_path = tmpdir.join("log.txt")
     pres_path = tmpdir.join("test.md")
     with pres_path.open("w") as f:
@@ -139,6 +123,7 @@ def test_exceptions(tmpdir, mocker):
         res.curr_slide.number = slide_number
         res.run.side_effect = Exception(exception_text)
         return res
+
     mocker.patch.object(lookatme.tui, "create_tui", fake_create_tui)
 
     res = run_cmd("--log", str(log_path), str(pres_path))
