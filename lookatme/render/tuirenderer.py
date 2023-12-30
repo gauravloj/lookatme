@@ -319,7 +319,9 @@ class TuiRenderer(object):
         return self.link(token)
 
     def codespan(self, token) -> str:
-        text = pygments_render.render_text(" " + token["raw"] + " ", plain=True)
+        text = token["raw"]
+        unescaped_text = html.unescape(text)
+        text = pygments_render.render_text(" " + unescaped_text + " ", plain=True)
         return [text]
 
     def linebreak(self, token) -> str:
@@ -443,7 +445,7 @@ class TuiRenderer(object):
 
     def block_text(self, token):
         text = self.render_children(token)
-        return text + [urwid.Divider()]
+        return text
 
     def block_code(self, token) -> str:
         """Renders a code block using the Pygments library.
@@ -639,6 +641,11 @@ class TuiRenderer(object):
             list_item_pile = urwid.Pile(urwid.SimpleFocusListWalker([]))
             for tok in item["children"]:
                 res = self.render_token(tok)
+                if isinstance(res[0], urwid.Divider):
+                    res = res[1:]
+                if isinstance(res[-1], urwid.Divider):
+                    res = res[:-1]
+
                 pile_or_listbox_add(list_item_pile, res)
             res = urwid.Columns(
                 [
