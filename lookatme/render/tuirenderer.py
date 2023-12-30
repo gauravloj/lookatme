@@ -1,10 +1,7 @@
 # write class that extends MardownRenderer from mistune library
-
-import copy
-import re
+import html
 import urwid
-from textwrap import indent
-
+import pygments.styles
 import lookatme.render.pygments as pygments_render
 import lookatme.config as config
 import lookatme.utils as utils
@@ -157,7 +154,48 @@ class TuiRenderer(object):
 
         :returns: A list of urwid Widgets or a single urwid Widget
         """
-        return [ClickableText("rendered table")]
+        from lookatme.widgets.table import Table
+
+        header, body = token['children']
+
+        if header['type'] != 'table_head':
+            header, body = body, header
+
+        def extract_cells():
+            token_rows = body['children']
+            rows = []
+            for row in token_rows:
+                row_items = row['children']
+                row_cells = list(map(lambda x: x['children'], row_items))
+                rows.append(row_cells)
+            return rows
+
+
+
+        def extract_headers():
+            header_items = header.get('children') or []
+            header_cells = list(map(lambda x: x['children'], header_items))
+            return header_cells
+
+        def extract_aligns():
+            header_items = header.get('children') or []
+            align_cells = list(map(lambda x: x['attrs'].get('align'), header_items))
+            return align_cells
+
+
+        headers = extract_headers()
+        aligns = extract_aligns()
+        cells = extract_cells()
+
+        table = Table(self, cells, headers=headers, aligns=aligns)
+        padding = urwid.Padding(table, width=table.total_width + 2, align="center")
+
+        def table_changed(*args, **kwargs):
+            padding.width = table.total_width + 2
+
+        urwid.connect_signal(table, "change", table_changed)
+
+        return padding
 
     def render_table_bak(self, text):
         return "<table>\n" + text + "</table>\n"
@@ -183,7 +221,7 @@ class TuiRenderer(object):
 
         return html + ">" + text + "</" + tag + ">\n"
 
-    def text(self, token) -> str:
+    def text(self, token):
         text = token["raw"]
 
         # headingstyle = self.localized_state.get("headings", {}).get("style", None)
@@ -220,10 +258,28 @@ class TuiRenderer(object):
         self.localized_state["oldstyle"] = oldstyle
         return utils.styled_text(res_text, addeffect, oldstyle)
 
-    def emphasis(self, token) -> str:
+    @tutor(
+        "markdown",
+        "emphasis",
+        r"""
+        <TUTOR:EXAMPLE>
+        The donut jumped *under* the crane.
+        </TUTOR:EXAMPLE>
+        """,
+    )
+    def emphasis(self, token):
         return self._add_effect(token, "italics")
 
-    def strong(self, token) -> str:
+    @tutor(
+        "markdown",
+        "double emphasis",
+        r"""
+        <TUTOR:EXAMPLE>
+        They jumped **over** the wagon
+        </TUTOR:EXAMPLE>
+        """,
+    )
+    def strong(self, token):
         return self._add_effect(token, "underline")
 
     @tutor(
@@ -246,23 +302,6 @@ class TuiRenderer(object):
 
     @tutor(
         "markdown",
-        "images",
-        r"""
-        Vanilla lookatme renders images as links. Some extensions provide ways to
-        render images in the terminal.
-
-        Consider exploring:
-
-        * [lookatme.contrib.image_ueberzug](https://github.com/d0c-s4vage/lookatme.contrib.image_ueberzug)
-        * This works on Linux only, with X11, and must be separately installed
-
-        <TUTOR:EXAMPLE>
-        ![image alt](https://image/url)
-        </TUTOR:EXAMPLE>
-        """,
-    )
-    @tutor(
-        "markdown",
         "links",
         r"""
         Links are inline elements in markdown and have the form `[text](link)`
@@ -279,7 +318,6 @@ class TuiRenderer(object):
         """,
     )
     @contrib_first
-    # def link(link_uri, title, link_text):
     def link(self, token):
         """Renders a link. This function does a few special things to make the
         clickable links happen. All text in lookatme is rendered using the
@@ -315,28 +353,72 @@ class TuiRenderer(object):
         spec = LinkIndicatorSpec(raw_link_text, link_uri, spec)
         return [ClickableText((spec, text))]
 
-    def image(self, token) -> str:
+    @tutor(
+        "markdown",
+        "images",
+        r"""
+        Vanilla lookatme renders images as links. Some extensions provide ways to
+        render images in the terminal.
+
+        Consider exploring:
+
+        * [lookatme.contrib.image_ueberzug](https://github.com/d0c-s4vage/lookatme.contrib.image_ueberzug)
+        * This works on Linux only, with X11, and must be separately installed
+
+        <TUTOR:EXAMPLE>
+        ![image alt](https://image/url)
+        </TUTOR:EXAMPLE>
+        """,
+    )
+    def image(self, token):
         return self.link(token)
 
-    def codespan(self, token) -> str:
+    @tutor(
+        "markdown",
+        "inline code",
+        r"""
+        <TUTOR:EXAMPLE>
+        The `OddOne` class accepts `Table` instances, converts them to raw pointers,
+        forces garbage collection to run.
+        </TUTOR:EXAMPLE>
+        """,
+    )
+    def codespan(self, token):
         text = token["raw"]
         unescaped_text = html.unescape(text)
         text = pygments_render.render_text(" " + unescaped_text + " ", plain=True)
         return [text]
 
-    def linebreak(self, token) -> str:
+    def linebreak(self, token):
         return [urwid.Divider()]
 
-    def softbreak(self, token) -> str:
-        return [urwid.Divider()]
+    def softbreak(self, token):
+        return ["\n"]
 
-    def blank_line(self, token) -> str:
+    def blank_line(self, token):
         return [urwid.Divider(), urwid.Divider()]
 
-    def render_inline_html(self, token) -> str:
+    def render_inline_html(self, token):
         return [token["raw"]]
 
-    def paragraph(self, token) -> str:
+    @tutor(
+        "markdown",
+        "paragraph",
+        r"""
+        Paragraphs in markdown are simply text with a full empty line between them:
+
+        <TUTOR:EXAMPLE>
+        paragraph 1
+
+        paragraph 2
+        </TUTOR:EXAMPLE>
+
+        ## Style
+
+        Paragraphs cannot be styled in lookatme.
+        """,
+    )
+    def paragraph(self, token):
         text = self.render_children(token)
         styled_text = list(map(_get_widget_text, text))
         return [urwid.Divider()] + [ClickableText(styled_text)] + [urwid.Divider()]
@@ -362,7 +444,7 @@ class TuiRenderer(object):
         """,
     )
     @contrib_first
-    def heading(self, token) -> str:
+    def heading(self, token):
         """Render markdown headings, using the defined styles for the styling and
         prefix/suffix.
 
@@ -447,7 +529,40 @@ class TuiRenderer(object):
         text = self.render_children(token)
         return text
 
-    def block_code(self, token) -> str:
+    @tutor(
+        "markdown",
+        "code blocks",
+        r"""
+        Multi-line code blocks are either surrounded by "fences" (three in a row of
+        either `\`` or `~`), or are lines of text indented at least four spaces.
+
+        Fenced codeblocks let you specify the language of the code:
+
+        <TUTOR:EXAMPLE>
+        ```python
+        def hello_world():
+            print("Hello, world!\n")
+        ```
+        </TUTOR:EXAMPLE>
+
+        ## Style
+
+        The syntax highlighting style used to highlight the code block can be
+        specified in the markdown metadata:
+
+        <TUTOR:STYLE>style</TUTOR:STYLE>
+
+        Valid values for the `style` field come directly from pygments. In the
+        version of pygments being used as you read this, the list of valid values is:
+
+        {pygments_values}
+
+        > **NOTE** This style name is confusing and will be renamed in lookatme v3.0+
+        """.format(
+            pygments_values=" ".join(pygments.styles.get_all_styles()),
+        )
+    )
+    def block_code(self, token):
         """Renders a code block using the Pygments library.
 
         See :any:`lookatme.tui.SlideRenderer.do_render` for additional argument and
@@ -460,7 +575,32 @@ class TuiRenderer(object):
 
         return [urwid.Divider(), res, urwid.Divider()]
 
-    def block_quote(self, token) -> str:
+    @tutor(
+        "markdown",
+        "block quote",
+        r"""
+        Block quotes are lines of markdown prefixed with `> `. Block quotes can
+        contain text, other markdown, and can even be nested!
+
+        <TUTOR:EXAMPLE>
+        > Some quoted text
+        > > > > # Heading
+        > > > >
+        > > > *hello world*
+        > > >
+        > > ~~apples~~
+        > >
+        > space chips
+        </TUTOR:EXAMPLE>
+
+        ## Style
+
+        Block quotes can be styled with slide metadata. This is the default style:
+
+        <TUTOR:STYLE>quote</TUTOR:STYLE>
+        """
+    )
+    def block_quote(self, token):
         # text = indent(self.render_children(token), '> ')
         # return text + '\n\n'
         """Begins rendering of a block quote. Pushes a new ``urwid.Pile()`` to the
@@ -520,10 +660,10 @@ class TuiRenderer(object):
 
         return toreturn
 
-    def render_block_html(self, token) -> str:
+    def render_block_html(self, token):
         return token["raw"] + "\n\n"
 
-    def render_block_error(self, token) -> str:
+    def render_block_error(self, token):
         return ""
 
     @tutor(
@@ -537,8 +677,8 @@ class TuiRenderer(object):
         1. item level 1.1
         1. item level 1.2
             1. item level 2.1
-                5. item level 3.1
-                6. item level 3.2
+                1. item level 3.1
+                1. item level 3.2
             1. item level 2.2
         1. item level 1.3
         </TUTOR:EXAMPLE>
@@ -584,23 +724,23 @@ class TuiRenderer(object):
 
         <TUTOR:EXAMPLE>
         1. item level 1.1
-        > quote
+           > quote
         1. item level 1.2
             * item level 2.1 
                 1. item level 3.1
-                a paragraph
-
-                More text here blah blah blah
+                   a paragraph
+                  
+                   More text here blah blah blah
                 1. A new item level 3.2
             * item level 2.2
-            ```python
-            print("hello")
-            ```
+              ```python
+              print("hello")
+              ```
         1. item level 1.3
         </TUTOR:EXAMPLE>
         """,
     )
-    def list(self, token) -> str:
+    def list(self, token):
         self.localized_state["list_level"] = (
             self.localized_state.get("list_level", 0) + 1
         )

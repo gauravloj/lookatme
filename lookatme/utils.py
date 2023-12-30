@@ -212,7 +212,7 @@ def pile_add(pile, widgets):
             and isinstance(pile.contents[-1][0], urwid.Divider)
         ):
             continue
-        if isinstance(w,str):
+        if isinstance(w, str):
             continue
         pile.contents.append((w, pile.options()))
 

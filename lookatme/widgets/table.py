@@ -9,7 +9,6 @@ from typing import List, Optional
 import urwid
 
 import lookatme.config as config
-from lookatme.render.markdown_block import render_text
 from lookatme.utils import styled_text
 from lookatme.widgets.clickable_text import ClickableText
 
@@ -19,7 +18,7 @@ class Table(urwid.Pile):
 
     signals = ["change"]
 
-    def __init__(self, rows, headers=None, aligns: Optional[List[str]] = None):
+    def __init__(self, renderer, rows, headers=None, aligns: Optional[List[str]] = None):
         """Create a new table
 
         :param list columns: The rows to use for the table
@@ -28,6 +27,7 @@ class Table(urwid.Pile):
         """
         self.table_rows = rows
         self.table_headers = headers
+        self.renderer = renderer
 
         if headers is not None:
             self.num_columns = len(headers)
@@ -157,7 +157,7 @@ class Table(urwid.Pile):
             for idx, cell in enumerate(row):
                 if idx >= self.num_columns:
                     break
-                rend_cell_widgets = render_text(text=cell)
+                rend_cell_widgets = self.renderer.render_tokens(cell)
                 new_widgets = []
                 for widget in rend_cell_widgets:
                     if isinstance(widget, urwid.Text):
