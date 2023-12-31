@@ -156,32 +156,29 @@ class TuiRenderer(object):
         """
         from lookatme.widgets.table import Table
 
-        header, body = token['children']
+        header, body = token["children"]
 
-        if header['type'] != 'table_head':
+        if header["type"] != "table_head":
             header, body = body, header
 
         def extract_cells():
-            token_rows = body['children']
+            token_rows = body["children"]
             rows = []
             for row in token_rows:
-                row_items = row['children']
-                row_cells = list(map(lambda x: x['children'], row_items))
+                row_items = row["children"]
+                row_cells = list(map(lambda x: x["children"], row_items))
                 rows.append(row_cells)
             return rows
 
-
-
         def extract_headers():
-            header_items = header.get('children') or []
-            header_cells = list(map(lambda x: x['children'], header_items))
+            header_items = header.get("children") or []
+            header_cells = list(map(lambda x: x["children"], header_items))
             return header_cells
 
         def extract_aligns():
-            header_items = header.get('children') or []
-            align_cells = list(map(lambda x: x['attrs'].get('align'), header_items))
+            header_items = header.get("children") or []
+            align_cells = list(map(lambda x: x["attrs"].get("align"), header_items))
             return align_cells
-
 
         headers = extract_headers()
         aligns = extract_aligns()
@@ -560,8 +557,9 @@ class TuiRenderer(object):
         > **NOTE** This style name is confusing and will be renamed in lookatme v3.0+
         """.format(
             pygments_values=" ".join(pygments.styles.get_all_styles()),
-        )
+        ),
     )
+    @contrib_first
     def block_code(self, token):
         """Renders a code block using the Pygments library.
 
@@ -598,7 +596,7 @@ class TuiRenderer(object):
         Block quotes can be styled with slide metadata. This is the default style:
 
         <TUTOR:STYLE>quote</TUTOR:STYLE>
-        """
+        """,
     )
     def block_quote(self, token):
         # text = indent(self.render_children(token), '> ')

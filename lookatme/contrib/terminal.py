@@ -13,7 +13,6 @@ import yaml
 from marshmallow import Schema, fields
 
 import lookatme.config
-import lookatme.render.markdown_block
 from lookatme.exceptions import IgnoredByContrib
 
 
@@ -68,8 +67,10 @@ class TerminalExSchema(Schema):
 CREATED_TERMS = []
 
 
-def render_code(token, body, stack, loop):
-    lang = token["lang"] or ""
+def block_code(renderer, token):
+    attrs = token.get("attrs", {})
+    lang = attrs.get("info", "")
+    code = token["raw"] or ""
 
     numbered_term_match = re.match(r"terminal(\d+)", lang)
     if lang != "terminal-ex" and numbered_term_match is None:
@@ -78,7 +79,7 @@ def render_code(token, body, stack, loop):
     if numbered_term_match is not None:
         term_data = TerminalExSchema().load(
             {
-                "command": token["text"].strip(),
+                "command": code.strip(),
                 "rows": int(numbered_term_match.group(1)),
                 "init_codeblock": False,
             }
@@ -109,7 +110,7 @@ def render_code(token, body, stack, loop):
 
     term = urwid.Terminal(
         shlex.split(term_data["command"].strip()),
-        main_loop=loop,
+        main_loop=renderer.loop,
         encoding="utf8",
     )
     CREATED_TERMS.append(term)
@@ -121,10 +122,14 @@ def render_code(token, body, stack, loop):
 
     if term_data["init_codeblock"] is True:
         fake_token = {
-            "text": term_data["init_text"],
-            "lang": term_data["init_codeblock_lang"],
+            "type": "block_code",
+            "raw": term_data["init_text"],
+            "style": "fenced",
+            "marker": "```",
+            "attrs": {"info": term_data["init_codeblock_lang"]},
         }
-        res += lookatme.render.markdown_block.render_code(fake_token, body, stack, loop)
+
+        res += renderer.block_code(fake_token)
 
     res += [
         urwid.Divider(),

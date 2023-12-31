@@ -18,7 +18,9 @@ class Table(urwid.Pile):
 
     signals = ["change"]
 
-    def __init__(self, renderer, rows, headers=None, aligns: Optional[List[str]] = None):
+    def __init__(
+        self, renderer, rows, headers=None, aligns: Optional[List[str]] = None
+    ):
         """Create a new table
 
         :param list columns: The rows to use for the table
