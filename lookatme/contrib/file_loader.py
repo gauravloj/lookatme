@@ -87,15 +87,16 @@ def transform_data(transform_shell_cmd, input_data):
     return stdout
 
 
-def render_code(token, body, stack, loop):
+def block_code(renderer, token):
     """Render the code, ignoring all code blocks except ones with the language
     set to ``file``.
     """
-    lang = token["lang"] or ""
+    attrs = token.get("attrs", {})
+    lang = attrs.get("info", "")
     if lang != "file":
         raise IgnoredByContrib
 
-    file_info_data = token["text"]
+    file_info_data = token["raw"] or ""
     file_info = FileSchema().loads(file_info_data)
 
     # relative to the slide source
@@ -119,6 +120,6 @@ def render_code(token, body, stack, loop):
     lines = file_data.split(b"\n")
     lines = lines[file_info["lines"]["start"] : file_info["lines"]["end"]]
     file_data = b"\n".join(lines)
-    token["text"] = file_data
-    token["lang"] = file_info["lang"]
+    token["raw"] = file_data
+    token["attrs"]["info"] = file_info["lang"]
     raise IgnoredByContrib
